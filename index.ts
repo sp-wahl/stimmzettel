@@ -475,9 +475,9 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     start_y = height - c.outerPadding - mm(4)
     drawCentredText(page, "SP-Stimmzettel / SP Ballot", start_x, start_y, sectionWidth, 12, c.boldFont, debug)
     start_y -= mm(5)
-    drawCentredText(page, "Wahl zum 43. Studierendenparlament der RFWU Bonn — 21. Januar 2021", start_x, start_y, sectionWidth, 12, c.regularFont, debug)
+    drawCentredText(page, "Wahl zum 44. Studierendenparlament der RFWU Bonn — 20. Januar 2022", start_x, start_y, sectionWidth, 12, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText(page, "Election of the 43rd Student Parliament of the University of Bonn — 21st January 2021\n", start_x, start_y, sectionWidth, 10, c.italicFont, debug)
+    drawCentredText(page, "Election of the 44th Student Parliament of the University of Bonn — 20th January 2022\n", start_x, start_y, sectionWidth, 10, c.italicFont, debug)
 }
 
 interface TextCfg {
