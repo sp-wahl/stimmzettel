@@ -515,6 +515,7 @@ const drawTexts = (page: PDFPage, texts: TextCfg[], size: number, x: number, y: 
             y: y,
             size: size,
             font: text.font,
+            color: cmyk(0, 0, 0, 1),
         })
         start_x += width
     }
