@@ -272,7 +272,7 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
 
 const drawCentredText = (text: string, x: number, y: number, width: number, size: number, font: PDFFont, debug: boolean = true, color: CMYK = cmyk(0, 0, 0, 1)) => {
     const textWidth = font.widthOfTextAtSize(text, size)
-    const start_x = x + (width - textWidth) / 2
+    let start_x = x + (width - textWidth) / 2
     if (debug) {
         const textHeight = font.heightAtSize(size, {descender: false})
         page.drawRectangle({
@@ -284,12 +284,29 @@ const drawCentredText = (text: string, x: number, y: number, width: number, size
             opacity: 0.2,
         })
     }
+    let nameScale = 1
+    if (textWidth > width) {
+        nameScale = width / textWidth
+        start_x = x
+        if (debug) {
+            const textHeight = font.heightAtSize(size, {descender: false})
+            page.drawRectangle({
+                x: start_x,
+                y: y,
+                width: textWidth,
+                height: textHeight,
+                color: cmyk(0, 1, 1, 0),
+                opacity: 0.5,
+            })
+        }
+    }
     page.drawText(text, {
         x: start_x,
         y: y,
         size: size,
         font: font,
         color: color,
+        matrix: [nameScale, 0, 0, 1, 0, 0],
     })
 }
 
