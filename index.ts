@@ -407,6 +407,23 @@ const drawDashedLine = (page: PDFPage, y: number, c: GlobalConfig) => {
     })
 }
 
+function drawX(page: PDFPage, start_x: number, start_y: number, c: GlobalConfig) {
+    page.drawLine({
+        start: {x: start_x, y: start_y + 2},
+        end: {x: start_x + c.itemHeight - 5, y: start_y + c.itemHeight - 2},
+        thickness: 2,
+        color: cmyk(0, 0, 0, 1),
+        lineCap: 1,
+    })
+    page.drawLine({
+        start: {x: start_x + 1, y: start_y + c.itemHeight - 2},
+        end: {x: start_x + c.itemHeight - 5, y: start_y + 2},
+        thickness: 2,
+        color: cmyk(0, 0, 0, 1),
+        lineCap: 1,
+    })
+}
+
 const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     const {width, height} = page.getSize()
 
@@ -447,6 +464,8 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     let start_x = mm(70)
     let start_y = height - c.outerPadding - c.itemHeight
     drawListField(page, fakeList, start_x, start_y, fakeConfig, debug)
+    drawX(page, start_x, start_y, c);
+
     start_y -= mm(4)
     drawCentredText(page, "Wähle eine Liste", start_x, start_y, sectionWidth, 9, c.regularFont, debug)
     start_y -= mm(4)
@@ -465,6 +484,8 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     start_x += mm(25)
     start_y = height - c.outerPadding - c.itemHeight
     drawPerson(page, fakePerson, start_x, start_y, fakeConfig2, true, debug)
+    drawX(page, start_x, start_y, c);
+
     start_y -= mm(4)
     drawCentredText(page, "Wähle eine Person", start_x, start_y, sectionWidth, 9, c.regularFont, debug)
     start_y -= mm(4)
