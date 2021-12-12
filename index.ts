@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import {cmyk, PageSizes, PDFDocument, PDFFont, PDFPage} from 'pdf-lib'
+import {CMYK, cmyk, PageSizes, PDFDocument, PDFFont, PDFPage} from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import * as fs from "fs";
+import {start} from "repl";
 
 class Person {
     number: string
@@ -150,13 +151,7 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
             opacity: 0.5,
         })
     }
-    page.drawText(person.number, {
-        x: start_x + (c.numberSpaceWidth - numberWidth) / 2,
-        y: y + (c.height - referenceHeight) / 2,
-        size: c.numberSize,
-        font: c.numberFont,
-        color: cmyk(0, 0, 0, 1),
-    })
+    drawCentredText(person.number, start_x, y + (c.height - referenceHeight) / 2, c.numberSpaceWidth, c.numberSize, c.numberFont)
     start_x += c.numberSpaceWidth
     if (debug) {
         page.drawRectangle({
@@ -272,40 +267,29 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
         opacity: 1,
     })
 
-    if(list.listname.length == 1){
-        const width = c.nameFont.widthOfTextAtSize(list.listname[0], c.nameSize)
-        const height = c.nameFont.heightAtSize(c.nameSize, {descender: false})
-        start_x += (c.nameSpaceWidth - width)/2
-        page.drawText(list.listname[0], {
-            x: start_x,
-            y: y + (c.height - height) / 2,
-            size: c.nameSize,
-            font: c.nameFont,
-            color: cmyk(0, 0, 0, 1),
-        })
+    const height = c.nameFont.heightAtSize(c.nameSize, {descender: false})
+    if (list.listname.length == 1) {
+        drawCentredText(list.listname[0], start_x, y + (c.height - height) / 2, c.nameSpaceWidth, c.nameSize, c.nameFont)
     } else {
-        const width0 = c.nameFont.widthOfTextAtSize(list.listname[0], c.nameSize)
-        const width1 = c.nameFont.widthOfTextAtSize(list.listname[1], c.nameSize)
-        const height = c.nameFont.heightAtSize(c.nameSize, {descender: false})
-        const start_0 = start_x + (c.nameSpaceWidth - width0)/2
-        const start_1 = start_x + (c.nameSpaceWidth - width1)/2
-        page.drawText(list.listname[0], {
-            x: start_0,
-            y: y + (c.height - 2*height) / 5 * 3 + height,
-            size: c.nameSize,
-            font: c.nameFont,
-            color: cmyk(0, 0, 0, 1),
-        })
-        page.drawText(list.listname[1], {
-            x: start_1,
-            y: y + (c.height - height) / 5,
-            size: c.nameSize,
-            font: c.nameFont,
-            color: cmyk(0, 0, 0, 1),
-        })
+        let topLineY = y + (c.height - 2 * height) / 5 * 3 + height;
+        let bottomLineY = y + (c.height - height) / 5;
+        drawCentredText(list.listname[0], start_x, topLineY, c.nameSpaceWidth, c.nameSize, c.nameFont)
+        drawCentredText(list.listname[1], start_x, bottomLineY, c.nameSpaceWidth, c.nameSize, c.nameFont)
     }
     drawSmallDottedLine(x, y, c.width)
     drawSmallDottedLine(x, y + c.height, c.width)
+}
+
+const drawCentredText = (text: string, x: number, y: number, width: number, size: number, font: PDFFont, color: CMYK = cmyk(0, 0, 0, 1)) => {
+    const textWidth = font.widthOfTextAtSize(text, size)
+    const start_x = x + (width - textWidth) / 2
+    page.drawText(text, {
+        x: start_x,
+        y: y,
+        size: size,
+        font: font,
+        color: color,
+    })
 }
 
 const drawSmallDottedLine = (x: number, y: number, width: number) => {
@@ -338,7 +322,7 @@ const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: 
 }
 
 
-const drawLists = (current_y: number, debug: boolean = true) => {
+const drawLists = (page: PDFPage, current_y: number, debug: boolean = true) => {
     drawDashedLine(current_y + globalConfig.itemHeight + 0.5 * globalConfig.listRowPadding, globalConfig)
     for (let list of data) {
         const listtodraw = List.fromJson(list);
@@ -362,7 +346,89 @@ const drawDashedLine = (y: number, c: GlobalConfig) => {
     })
 }
 
+const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
+    const {width, height} = page.getSize()
+
+    const circleRadius = mm(7)
+    page.drawCircle({
+        x: c.outerPadding + circleRadius,
+        y: height - c.outerPadding - circleRadius,
+        size: circleRadius,
+        color: cmyk(0, 0, 0, 0.9),
+    })
+    drawCentredText("?", c.outerPadding, height - c.outerPadding - circleRadius * 1.6, 2 * circleRadius, 32, c.boldFont, cmyk(0, 0, 0, 0))
+
+    drawTexts(page, [{text: "Du hast ", font: c.regularFont}, {
+        text: "eine Stimme.",
+        font: c.boldFont
+    }], 12, mm(22), height - mm(11))
+    drawTexts(page, [{text: "You have ", font: c.regularFont}, {
+        text: "one vote.",
+        font: c.boldFont
+    }], 12, mm(22), height - mm(16))
+
+    const fakeList = new List(["List Name"], [])
+    const fakeConfig = new ItemConfig(c)
+    let sectionWidth = mm(30)
+    fakeConfig.width = sectionWidth
+    fakeConfig.nameFont = c.boldFont
+    let start_x = mm(70)
+    let start_y = height - c.outerPadding - c.itemHeight
+    drawListField(page, fakeList, start_x, start_y, fakeConfig, debug)
+    start_y -= mm(4)
+    drawCentredText("Wähle eine Liste", start_x, start_y, sectionWidth, 9, c.regularFont)
+    start_y -= mm(4)
+    drawCentredText("Vote for one list", start_x, start_y, sectionWidth, 9, c.italicFont)
+
+
+    start_x += mm(25)
+    start_y = height - c.outerPadding - c.itemHeight - mm(1)
+    drawCentredText("ODER", start_x, start_y, sectionWidth, 9, c.regularFont)
+    start_y -= mm(4)
+    drawCentredText("OR", start_x, start_y, sectionWidth, 9, c.italicFont)
+
+    const fakePerson = new Person('99', 'Vorname Nachname', 'Studienfach')
+    const fakeConfig2 = new ItemConfig(c)
+    fakeConfig2.width = sectionWidth
+    start_x += mm(25)
+    start_y = height - c.outerPadding - c.itemHeight
+    drawPerson(page, fakePerson, start_x, start_y, fakeConfig2, true, debug)
+    start_y -= mm(4)
+    drawCentredText("Wähle eine Person", start_x, start_y, sectionWidth, 9, c.regularFont)
+    start_y -= mm(4)
+    drawCentredText("Vote for one person", start_x, start_y, sectionWidth, 9, c.italicFont)
+
+    start_x = width / 2
+    sectionWidth = width / 2 - c.outerPadding
+    start_y = height - c.outerPadding - mm(4)
+    drawCentredText("SP-Stimmzettel / SP Ballot", start_x, start_y, sectionWidth, 12, c.boldFont)
+    start_y -= mm(5)
+    drawCentredText("Wahl zum 43. Studierendenparlament der RFWU Bonn — 21. Januar 2021", start_x, start_y, sectionWidth, 12, c.regularFont)
+    start_y -= mm(4)
+    drawCentredText("Election of the 43rd Student Parliament of the University of Bonn — 21st January 2021\n", start_x, start_y, sectionWidth, 10, c.italicFont)
+}
+
+interface TextCfg {
+    text: string
+    font: PDFFont
+}
+
+const drawTexts = (page: PDFPage, texts: TextCfg[], size: number, x: number, y: number) => {
+    let start_x = x
+    for (let text of texts) {
+        const width = text.font.widthOfTextAtSize(text.text, size)
+        page.drawText(text.text, {
+            x: start_x,
+            y: y,
+            size: size,
+            font: text.font,
+        })
+        start_x += width
+    }
+}
+
 // PDF Creation
+const debug = true
 const pdfDoc = await PDFDocument.create()
 pdfDoc.registerFontkit(fontkit)
 const italicttf = fs.readFileSync('fonts/RobotoCondensed-Italic.ttf')
@@ -372,17 +438,21 @@ const italicFont = await pdfDoc.embedFont(italicttf)
 const regularFont = await pdfDoc.embedFont(regularttf)
 const boldFont = await pdfDoc.embedFont(boldttf)
 const page = pdfDoc.addPage(PageSizes.A3)
-page.drawRectangle({
-    x: mm(5),
-    y: mm(5),
-    width: PageSizes.A3[0] - mm(10),
-    height: mm(391) - mm(5),
-    color: cmyk(1, 0, 0, 0),
-    opacity: 0.1,
-})
 const data = JSON.parse(fs.readFileSync('data.json').toString())
 const globalConfig = new GlobalConfig(regularFont, italicFont, boldFont)
+
+if (debug) {
+    page.drawRectangle({
+        x: globalConfig.outerPadding,
+        y: globalConfig.outerPadding,
+        width: page.getWidth() - 2 * globalConfig.outerPadding,
+        height: page.getHeight() - 2 * globalConfig.outerPadding,
+        color: cmyk(1, 0, 0, 0),
+        opacity: 0.1,
+    })
+}
+drawHeader(page, globalConfig, debug)
 let current_y = mm(391) - globalConfig.itemHeight
-drawLists(current_y);
+drawLists(page, current_y, debug);
 const pdfBytes = await pdfDoc.save()
 fs.writeFileSync('out.pdf', pdfBytes);
