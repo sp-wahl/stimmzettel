@@ -4,65 +4,6 @@ import {CMYK, cmyk, PageSizes, PDFDocument, PDFFont, PDFPage} from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import * as fs from "fs";
 
-class Data {
-    lists: List[]
-
-    constructor(lists) {
-        this.lists = lists
-    }
-
-    static fromJson(obj: any) {
-        return new Data(obj.map(l => List.fromJson(l)))
-    }
-
-    getListsHeight(c: GlobalConfig){
-        let sum = 0
-        for (let list of this.lists) {
-            sum += list.getHeight(c)
-        }
-        return sum
-    }
-}
-
-class Person {
-    number: string
-    name: string
-    subjects: string
-
-    constructor(number, name, subjects) {
-        this.number = number
-        this.name = name
-        this.subjects = subjects
-    }
-
-    static fromJson(obj: any): Person {
-        return new Person(obj.number, obj.name, obj.subjects)
-    }
-}
-
-class List {
-    listname: string[]
-    people: Person[]
-
-    constructor(listname, people) {
-        this.listname = listname
-        this.people = people
-    }
-
-    static fromJson(obj: any): List {
-        return new List(obj.listname, obj.people.map(p => Person.fromJson(p)))
-    }
-
-    getRowsPerColumn(c: GlobalConfig) {
-        return Math.ceil((this.people.length + 1) / c.columns)
-    }
-
-    getHeight(c: GlobalConfig) {
-        const rowsPerColumn = this.getRowsPerColumn(c)
-        return c.itemHeight * rowsPerColumn
-    }
-}
-
 class GlobalConfig {
     pageSize: [number, number]
     outerPadding: number
@@ -134,6 +75,65 @@ class ItemConfig {
         this.subjectSize = 6
         this.subjectY = 1 / 6.5 * this.height
         this.subjectFont = globalConfig.italicFont
+    }
+}
+
+class Data {
+    lists: List[]
+
+    constructor(lists) {
+        this.lists = lists
+    }
+
+    static fromJson(obj: any) {
+        return new Data(obj.map(l => List.fromJson(l)))
+    }
+
+    getListsHeight(c: GlobalConfig){
+        let sum = 0
+        for (let list of this.lists) {
+            sum += list.getHeight(c)
+        }
+        return sum
+    }
+}
+
+class Person {
+    number: string
+    name: string
+    subjects: string
+
+    constructor(number, name, subjects) {
+        this.number = number
+        this.name = name
+        this.subjects = subjects
+    }
+
+    static fromJson(obj: any): Person {
+        return new Person(obj.number, obj.name, obj.subjects)
+    }
+}
+
+class List {
+    listname: string[]
+    people: Person[]
+
+    constructor(listname, people) {
+        this.listname = listname
+        this.people = people
+    }
+
+    static fromJson(obj: any): List {
+        return new List(obj.listname, obj.people.map(p => Person.fromJson(p)))
+    }
+
+    getRowsPerColumn(c: GlobalConfig) {
+        return Math.ceil((this.people.length + 1) / c.columns)
+    }
+
+    getHeight(c: GlobalConfig) {
+        const rowsPerColumn = this.getRowsPerColumn(c)
+        return c.itemHeight * rowsPerColumn
     }
 }
 
