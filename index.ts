@@ -499,8 +499,7 @@ const drawTexts = (page: PDFPage, texts: TextCfg[], size: number, x: number, y: 
     }
 }
 
-const main = async () => {
-    const debug = true
+const main = async (inputfile: string, outputfile: string, debug: boolean) => {
     const pdfDoc = await PDFDocument.create()
     pdfDoc.registerFontkit(fontkit)
     const italicttf = fs.readFileSync('fonts/RobotoCondensed-Italic.ttf')
@@ -511,7 +510,7 @@ const main = async () => {
     const boldFont = await pdfDoc.embedFont(boldttf)
     const globalConfig = new GlobalConfig(regularFont, italicFont, boldFont)
     const page = pdfDoc.addPage(globalConfig.pageSize)
-    const rawData = JSON.parse(fs.readFileSync('data.json').toString())
+    const rawData = JSON.parse(fs.readFileSync(inputfile).toString())
     const data = Data.fromJson(rawData)
 
     const rowPaddingHeight = globalConfig.listSpaceHeight - data.getListsHeight(globalConfig) - globalConfig.dashedLineWidth
@@ -530,7 +529,7 @@ const main = async () => {
     drawHeader(page, globalConfig, debug)
     drawLists(page, data, globalConfig, debug)
     const pdfBytes = await pdfDoc.save()
-    fs.writeFileSync('out.pdf', pdfBytes)
+    fs.writeFileSync(outputfile, pdfBytes)
 }
 
-await main()
+await main('sample.json', 'out.pdf', true)

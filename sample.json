@@ -1,0 +1,37 @@
+[
+    {
+        "listname": ["Diese Liste"],
+        "people": [
+            {
+                "number": "1",
+                "name": "Dschingis Khan",
+                "subjects": "Volkswirtschaftslehre"
+            },
+            {
+                "number": "2",
+                "name": "Johanna von Orléans",
+                "subjects": "Rechtswissenschaft | Politik und Gesellschaft"
+            },
+            {
+                "number": "3",
+                "name": "William Wallace",
+                "subjects": "Politik u. Gesellschaft | Skandinavistik"
+            }
+        ]
+    },
+    {
+        "listname": ["Jene andere Liste", "mit dem langen Namen"],
+        "people": [
+            {
+                "number": "1",
+                "name": "Saladin",
+                "subjects": "Politik und Gesellschaft | English Studies"
+            },
+            {
+                "number": "2",
+                "name": "Friedrich Barbarossa",
+                "subjects": "Politikwissenschaft"
+            }
+        ]
+    }
+]
