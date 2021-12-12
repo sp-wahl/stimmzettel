@@ -3,7 +3,6 @@
 import {CMYK, cmyk, PageSizes, PDFDocument, PDFFont, PDFPage} from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import * as fs from "fs";
-import {start} from "repl";
 
 class Person {
     number: string
@@ -131,7 +130,6 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
         borderWidth: c.circleWidth,
     })
     start_x = x + c.circleSpaceWidth
-    const numberWidth = c.numberFont.widthOfTextAtSize(person.number, c.numberSize)
     const referenceHeight = c.numberFont.heightAtSize(c.numberSize, {descender: false})
     if (debug) {
         page.drawRectangle({
@@ -142,16 +140,8 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
             color: cmyk(0, 0, 0.6, 0),
             opacity: 0.5,
         })
-        page.drawRectangle({
-            x: start_x + (c.numberSpaceWidth - numberWidth) / 2,
-            y: y + (c.height - referenceHeight) / 2,
-            width: numberWidth,
-            height: referenceHeight,
-            color: cmyk(0, 0, 0, 0.5),
-            opacity: 0.5,
-        })
     }
-    drawCentredText(person.number, start_x, y + (c.height - referenceHeight) / 2, c.numberSpaceWidth, c.numberSize, c.numberFont)
+    drawCentredText(person.number, start_x, y + (c.height - referenceHeight) / 2, c.numberSpaceWidth, c.numberSize, c.numberFont, debug)
     start_x += c.numberSpaceWidth
     if (debug) {
         page.drawRectangle({
@@ -269,20 +259,31 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
 
     const height = c.nameFont.heightAtSize(c.nameSize, {descender: false})
     if (list.listname.length == 1) {
-        drawCentredText(list.listname[0], start_x, y + (c.height - height) / 2, c.nameSpaceWidth, c.nameSize, c.nameFont)
+        drawCentredText(list.listname[0], start_x, y + (c.height - height) / 2, c.nameSpaceWidth, c.nameSize, c.nameFont, debug)
     } else {
         let topLineY = y + (c.height - 2 * height) / 5 * 3 + height;
         let bottomLineY = y + (c.height - height) / 5;
-        drawCentredText(list.listname[0], start_x, topLineY, c.nameSpaceWidth, c.nameSize, c.nameFont)
-        drawCentredText(list.listname[1], start_x, bottomLineY, c.nameSpaceWidth, c.nameSize, c.nameFont)
+        drawCentredText(list.listname[0], start_x, topLineY, c.nameSpaceWidth, c.nameSize, c.nameFont, debug)
+        drawCentredText(list.listname[1], start_x, bottomLineY, c.nameSpaceWidth, c.nameSize, c.nameFont, debug)
     }
     drawSmallDottedLine(x, y, c.width)
     drawSmallDottedLine(x, y + c.height, c.width)
 }
 
-const drawCentredText = (text: string, x: number, y: number, width: number, size: number, font: PDFFont, color: CMYK = cmyk(0, 0, 0, 1)) => {
+const drawCentredText = (text: string, x: number, y: number, width: number, size: number, font: PDFFont, debug: boolean = true, color: CMYK = cmyk(0, 0, 0, 1)) => {
     const textWidth = font.widthOfTextAtSize(text, size)
     const start_x = x + (width - textWidth) / 2
+    if (debug) {
+        const textHeight = font.heightAtSize(size, {descender: false})
+        page.drawRectangle({
+            x: start_x,
+            y: y,
+            width: textWidth,
+            height: textHeight,
+            color: cmyk(1, 1, 0, 0),
+            opacity: 0.2,
+        })
+    }
     page.drawText(text, {
         x: start_x,
         y: y,
@@ -356,7 +357,7 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
         size: circleRadius,
         color: cmyk(0, 0, 0, 0.9),
     })
-    drawCentredText("?", c.outerPadding, height - c.outerPadding - circleRadius * 1.6, 2 * circleRadius, 32, c.boldFont, cmyk(0, 0, 0, 0))
+    drawCentredText("?", c.outerPadding, height - c.outerPadding - circleRadius * 1.6, 2 * circleRadius, 32, c.boldFont, debug, cmyk(0, 0, 0, 0))
 
     drawTexts(page, [{text: "Du hast ", font: c.regularFont}, {
         text: "eine Stimme.",
@@ -376,16 +377,16 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     let start_y = height - c.outerPadding - c.itemHeight
     drawListField(page, fakeList, start_x, start_y, fakeConfig, debug)
     start_y -= mm(4)
-    drawCentredText("Wähle eine Liste", start_x, start_y, sectionWidth, 9, c.regularFont)
+    drawCentredText("Wähle eine Liste", start_x, start_y, sectionWidth, 9, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText("Vote for one list", start_x, start_y, sectionWidth, 9, c.italicFont)
+    drawCentredText("Vote for one list", start_x, start_y, sectionWidth, 9, c.italicFont, debug)
 
 
     start_x += mm(25)
     start_y = height - c.outerPadding - c.itemHeight - mm(1)
-    drawCentredText("ODER", start_x, start_y, sectionWidth, 9, c.regularFont)
+    drawCentredText("ODER", start_x, start_y, sectionWidth, 9, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText("OR", start_x, start_y, sectionWidth, 9, c.italicFont)
+    drawCentredText("OR", start_x, start_y, sectionWidth, 9, c.italicFont, debug)
 
     const fakePerson = new Person('99', 'Vorname Nachname', 'Studienfach')
     const fakeConfig2 = new ItemConfig(c)
@@ -394,18 +395,18 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     start_y = height - c.outerPadding - c.itemHeight
     drawPerson(page, fakePerson, start_x, start_y, fakeConfig2, true, debug)
     start_y -= mm(4)
-    drawCentredText("Wähle eine Person", start_x, start_y, sectionWidth, 9, c.regularFont)
+    drawCentredText("Wähle eine Person", start_x, start_y, sectionWidth, 9, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText("Vote for one person", start_x, start_y, sectionWidth, 9, c.italicFont)
+    drawCentredText("Vote for one person", start_x, start_y, sectionWidth, 9, c.italicFont, debug)
 
     start_x = width / 2
     sectionWidth = width / 2 - c.outerPadding
     start_y = height - c.outerPadding - mm(4)
-    drawCentredText("SP-Stimmzettel / SP Ballot", start_x, start_y, sectionWidth, 12, c.boldFont)
+    drawCentredText("SP-Stimmzettel / SP Ballot", start_x, start_y, sectionWidth, 12, c.boldFont, debug)
     start_y -= mm(5)
-    drawCentredText("Wahl zum 43. Studierendenparlament der RFWU Bonn — 21. Januar 2021", start_x, start_y, sectionWidth, 12, c.regularFont)
+    drawCentredText("Wahl zum 43. Studierendenparlament der RFWU Bonn — 21. Januar 2021", start_x, start_y, sectionWidth, 12, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText("Election of the 43rd Student Parliament of the University of Bonn — 21st January 2021\n", start_x, start_y, sectionWidth, 10, c.italicFont)
+    drawCentredText("Election of the 43rd Student Parliament of the University of Bonn — 21st January 2021\n", start_x, start_y, sectionWidth, 10, c.italicFont, debug)
 }
 
 interface TextCfg {
