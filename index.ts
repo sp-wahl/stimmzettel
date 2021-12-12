@@ -48,7 +48,7 @@ class GlobalConfig {
         this.outerPadding = mm(5)
         this.itemHeight = mm(6.5)
         this.columnPadding = mm(3)
-        this.listRowPadding = mm(5)
+        this.listRowPadding = mm(8)
         this.columns = 5
         this.regularFont = regularFont
         this.italicFont = italicFont
@@ -84,7 +84,7 @@ class ItemConfig {
         this.circleRadius = mm(2)
         this.circleWidth = mm(0.25)
         this.circleSpaceWidth = this.circleRadius * 2 + mm(0.25)
-        this.numberSpaceWidth = mm(3)
+        this.numberSpaceWidth = mm(4)
         this.numberSize = 8
         this.numberFont = globalConfig.regularFont
         this.nameSize = 7
@@ -100,7 +100,7 @@ const mm = (value: number): number => {
     return value * 72 / 25.4
 }
 
-const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: ItemConfig, debug: boolean = true) => {
+const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: ItemConfig, topLine: boolean = false, debug: boolean = true) => {
     if (debug) {
         page.drawRectangle({
             x: x,
@@ -216,6 +216,11 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
         color: cmyk(0, 0, 0, 0.7),
         matrix: [subjectsScale, 0, 0, 1, 0, 0],
     })
+
+    drawSmallDottedLine(x, y, c.width)
+    if (topLine) {
+        drawSmallDottedLine(x, y + c.height, c.width)
+    }
 }
 
 const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemConfig, debug: boolean = true) => {
@@ -298,11 +303,24 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
             font: c.nameFont,
             color: cmyk(0, 0, 0, 1),
         })
-
     }
+    drawSmallDottedLine(x, y, c.width)
+    drawSmallDottedLine(x, y + c.height, c.width)
 }
 
-const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: boolean = false) => {
+const drawSmallDottedLine = (x: number, y: number, width: number) => {
+    page.drawLine({
+        start: {x: x, y: y},
+        end: {x: x + width, y: y},
+        thickness: 0.25,
+        color: cmyk(0, 0, 0, 0.5),
+        dashArray: [0, 0.5],
+        dashPhase: 0.125 / 2,
+        lineCap: 1,
+    })
+}
+
+const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: boolean = true) => {
     const listItemConfig = new ItemConfig(globalConfig);
     listItemConfig.nameFont = c.boldFont
     drawListField(page, list, c.outerPadding, y, listItemConfig, debug)
@@ -314,9 +332,34 @@ const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: 
         const itemConfig = new ItemConfig(globalConfig);
         const x = c.outerPadding + column * itemConfig.width + column * c.columnPadding
         const pos_y = y - row * c.itemHeight
-        drawPerson(page, person, x, pos_y, itemConfig, debug)
+        drawPerson(page, person, x, pos_y, itemConfig, row == 0, debug)
         index++;
     }
+}
+
+
+const drawLists = (current_y: number, debug: boolean = true) => {
+    drawDashedLine(current_y + globalConfig.itemHeight + 0.5 * globalConfig.listRowPadding, globalConfig)
+    for (let list of data) {
+        const listtodraw = List.fromJson(list);
+        const rowsPerColumn = Math.ceil((list.people.length + 1) / globalConfig.columns)
+        drawList(page, listtodraw, current_y, globalConfig, debug)
+        current_y = current_y - rowsPerColumn * globalConfig.itemHeight - globalConfig.listRowPadding
+        const line_y = current_y + globalConfig.itemHeight + 0.5 * globalConfig.listRowPadding
+        drawDashedLine(line_y, globalConfig)
+    }
+}
+
+const drawDashedLine = (y: number, c: GlobalConfig) => {
+    const dashLength = (PageSizes.A3[0] - globalConfig.outerPadding * 2) / 61
+    page.drawLine({
+        start: {x: globalConfig.outerPadding, y: y},
+        end: {x: PageSizes.A3[0] - globalConfig.outerPadding, y: y},
+        thickness: mm(1),
+        color: cmyk(0, 0, 0, 0.2),
+        dashArray: [dashLength, dashLength],
+        dashPhase: 0,
+    })
 }
 
 // PDF Creation
@@ -340,11 +383,6 @@ page.drawRectangle({
 const data = JSON.parse(fs.readFileSync('data.json').toString())
 const globalConfig = new GlobalConfig(regularFont, italicFont, boldFont)
 let current_y = mm(391) - globalConfig.itemHeight
-for (let list of data) {
-    const listtodraw = List.fromJson(list);
-    const rowsPerColumn = Math.ceil((list.people.length + 1) / globalConfig.columns)
-    drawList(page, listtodraw, current_y, globalConfig)
-    current_y = current_y - rowsPerColumn * globalConfig.itemHeight - globalConfig.listRowPadding
-}
+drawLists(current_y);
 const pdfBytes = await pdfDoc.save()
 fs.writeFileSync('out.pdf', pdfBytes);
