@@ -21,7 +21,7 @@ class GlobalConfig {
     constructor(regularFont: PDFFont, italicFont: PDFFont, boldFont: PDFFont) {
         this.pageSize = PageSizes.A3
         this.outerPadding = mm(5)
-        this.headerHeight = mm(18)
+        this.headerHeight = mm(60)
         this.itemHeight = mm(6.5)
         this.columnPadding = mm(3)
         this.listRowPadding = mm(8)
@@ -30,7 +30,7 @@ class GlobalConfig {
         this.italicFont = italicFont
         this.boldFont = boldFont
         this.dottedLineWidth = 0.25
-        this.dashedLineWidth = mm(2)
+        this.dashedLineWidth = 1
     }
 
     get listSpaceHeight() {
@@ -65,7 +65,7 @@ class ItemConfig {
         this.width = (globalConfig.pageSize[0] - (2 * this.globalConfig.outerPadding) - ((this.globalConfig.columns - 1) * this.globalConfig.columnPadding)) / this.globalConfig.columns
         this.circleRadius = mm(2)
         this.circleWidth = mm(0.25)
-        this.circleSpaceWidth = this.circleRadius * 2 + mm(0.25)
+        this.circleSpaceWidth = mm(15)
         this.numberSpaceWidth = mm(4)
         this.numberSize = 8
         this.numberFont = globalConfig.regularFont
@@ -132,7 +132,10 @@ class List {
     }
 
     getHeight(c: GlobalConfig) {
-        const rowsPerColumn = this.getRowsPerColumn(c)
+        let rowsPerColumn = this.getRowsPerColumn(c)
+        if (((this.people.length + 1) % c.columns) == 0) {
+            rowsPerColumn++
+        }
         return c.itemHeight * rowsPerColumn
     }
 }
@@ -163,12 +166,20 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
             opacity: 0.5,
         })
     }
-    page.drawCircle({
-        x: start_x + c.circleRadius,
-        y: y + (c.height / 2),
-        size: c.circleRadius,
+    // page.drawCircle({
+    //     x: start_x + c.circleRadius,
+    //     y: y + (c.height / 2),
+    //     size: c.circleRadius,
+    //     borderColor: cmyk(0, 0, 0, 1),
+    //     borderWidth: c.circleWidth,
+    // })
+    page.drawRectangle({
+        x: start_x,
+        y: y,
+        width: c.circleSpaceWidth,
+        height: c.height,
         borderColor: cmyk(0, 0, 0, 1),
-        borderWidth: c.circleWidth,
+        borderWidth: 1,
     })
     start_x = x + c.circleSpaceWidth
     const referenceHeight = c.numberFont.heightAtSize(c.numberSize, {descender: false})
@@ -271,14 +282,35 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
             opacity: 0.5,
         })
     }
-    page.drawCircle({
-        x: start_x + c.circleRadius,
-        y: y + (c.height / 2),
-        size: c.circleRadius,
+    // page.drawCircle({
+    //     x: start_x + c.circleRadius,
+    //     y: y + (c.height / 2),
+    //     size: c.circleRadius,
+    //     borderColor: cmyk(0, 0, 0, 1),
+    //     borderWidth: c.circleWidth,
+    // })
+    page.drawRectangle({
+        x: start_x,
+        y: y,
+        width: c.circleSpaceWidth,
+        height: c.height,
         borderColor: cmyk(0, 0, 0, 1),
-        borderWidth: c.circleWidth,
+        borderWidth: 1,
     })
-    start_x = x + c.circleSpaceWidth + c.numberSpaceWidth
+    start_x = x + c.circleSpaceWidth
+    const referenceHeight = c.numberFont.heightAtSize(c.numberSize, {descender: false})
+    if (debug) {
+        page.drawRectangle({
+            x: start_x,
+            y: y,
+            width: c.numberSpaceWidth,
+            height: c.height,
+            color: cmyk(0, 0, 0.6, 0),
+            opacity: 0.5,
+        })
+    }
+    drawCentredText(page, 'L', start_x, y + (c.height - referenceHeight) / 2, c.numberSpaceWidth, c.numberSize, c.numberFont, debug)
+    start_x += c.numberSpaceWidth
     if (debug) {
         page.drawRectangle({
             x: start_x,
@@ -378,6 +410,18 @@ const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: 
         drawPerson(page, person, x, pos_y, itemConfig, row == 0, debug)
         index++;
     }
+    let column = Math.floor(index / rowsPerColumn)
+    let row = index % rowsPerColumn
+    if (column > (c.columns - 1)) {
+        column = c.columns - 1
+        row = rowsPerColumn
+    }
+    const itemConfig = new ItemConfig(c);
+    itemConfig.nameFont = c.boldFont
+    const x = c.outerPadding + column * itemConfig.width + column * c.columnPadding
+    const pos_y = y - row * c.itemHeight
+    const person = new Person('G', 'Gesamtstimmen', list.listname.join(' '))
+    drawPerson(page, person, x, pos_y, itemConfig, row == 0, debug)
 }
 
 
@@ -387,9 +431,8 @@ const drawLists = (page: PDFPage, data: Data, c: GlobalConfig, debug: boolean = 
     current_y -= (0.5 * c.listRowPadding + c.itemHeight)
     for (let list of data.lists) {
         const listtodraw = List.fromJson(list);
-        const rowsPerColumn = list.getRowsPerColumn(c)
         drawList(page, listtodraw, current_y, c, debug)
-        current_y = current_y - rowsPerColumn * c.itemHeight - c.listRowPadding
+        current_y = current_y - list.getHeight(c) - c.listRowPadding
         const line_y = current_y + c.itemHeight + 0.5 * c.listRowPadding
         drawDashedLine(page, line_y, c)
     }
@@ -422,6 +465,115 @@ function drawX(page: PDFPage, start_x: number, start_y: number, c: GlobalConfig)
         color: cmyk(0, 0, 0, 1),
         lineCap: 1,
     })
+}
+
+const drawAltHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
+    const {width, height} = page.getSize()
+    let x, y, w
+    x = c.outerPadding
+    y = height - c.outerPadding - mm(33)
+    w = mm(55)
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(33),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+    drawCentredText(page, 'Urne Nr.', x, y + mm(1), w, 8, c.regularFont, debug)
+
+    x += w + c.columnPadding
+    w = mm(112)
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(33),
+        borderColor: cmyk(0, 0, 0, .5),
+        borderWidth: 2,
+    })
+    drawCentredText(page, 'Kommentare + anders interpretierte Stimmzettel', x, y + mm(1), w, 8, c.regularFont, debug)
+
+    x = c.outerPadding
+    y -= mm(18)
+    w = mm(35)
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+    drawCentredText(page, 'Nr. auf Laufzettel', x, y + mm(1), w, 8, c.regularFont, debug)
+
+    x += w + c.columnPadding
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+        borderColor: cmyk(0, 0, 0, .5),
+        borderWidth: 2,
+    })
+    drawCentredText(page, 'Team', x, y + mm(1), w, 8, c.regularFont, debug)
+
+    x += w + c.columnPadding
+    w = mm(94)
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+        borderColor: cmyk(0, 0, 0, .5),
+        borderWidth: 2,
+    })
+    drawCentredText(page, 'Unterschrift Tischleitung', x, y + mm(1), w, 8, c.regularFont, debug)
+
+    x += w + c.columnPadding
+    w = mm(55)
+    drawCentredText(page, 'Gültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug)
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+    y += mm(13)
+    drawCentredText(page, 'Unültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug)
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+    y += mm(13)
+    drawCentredText(page, 'Stimmen Gesamt', x, y + mm(3), w, 20, c.boldFont, debug)
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+    y += mm(13)
+    drawCentredText(page, 'Vorab ungültig, weil', x, y + mm(6), w, 8, c.regularFont, debug)
+    drawCentredText(page, 'Briefwahlvorgaben nicht eingehalten', x, y + mm(3), w, 8, c.regularFont, debug)
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+        borderColor: cmyk(0, 0, 0, 1),
+        borderWidth: 2,
+    })
+
 }
 
 const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
@@ -548,7 +700,8 @@ const main = async (inputfile: string, outputfile: string, debug: boolean) => {
             opacity: 0.1,
         })
     }
-    drawHeader(page, globalConfig, debug)
+    // drawHeader(page, globalConfig, debug)
+    drawAltHeader(page, globalConfig, debug)
     drawLists(page, data, globalConfig, debug)
     const pdfBytes = await pdfDoc.save()
     fs.writeFileSync(outputfile, pdfBytes)
