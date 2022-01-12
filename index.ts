@@ -554,4 +554,5 @@ const main = async (inputfile: string, outputfile: string, debug: boolean) => {
     fs.writeFileSync(outputfile, pdfBytes)
 }
 
-await main('sample.json', 'out.pdf', true)
+await main('2022.json', 'out.pdf', false)
+await main('2022.json', 'out-debug.pdf', true)
