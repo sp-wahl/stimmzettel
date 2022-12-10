@@ -34,7 +34,7 @@ def process_file(input_file: Path) -> CandidatingList:
                     "Incorrect csv format, could not find 'Listenplatz / Position'")
                 return None
             person = Person(line["Listenplatz / Position"],
-                            f"{line['Vorname(n) / First name(s)'].strip()} {line['Nachname / Last name'].strip()}", line["Studienfach / Degree programme"])
+                            f"{line['Vorname(n) / First name(s)'].strip()} {line['Nachname / Last name'].strip()}", " | ".join([x.strip() for x in line["Studienfach / Degree programme"].split(",")]))
             res.people.append(person)
         logging.debug("finished with %s and generated %s", input_file, res)
     return res
