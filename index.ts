@@ -4,7 +4,42 @@ import {CMYK, cmyk, PageSizes, PDFDocument, PDFFont, PDFPage} from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import * as fs from "fs";
 
+interface Options {
+    topTitle: string
+    title: string
+    titleEN: string
+    outerPadding: number
+    itemHeight: number
+    columnPadding: number
+    listRowPadding: number
+    columns: number
+    dashedLineWidth: number
+    circleRadius: number
+    circleWidth: number
+    numberSize: number
+    nameSize: number
+    subjectSize: number
+}
+
+const defaultOptions = {
+    topTitle: "SP-Stimmzettel / SP Ballot",
+    title: "Wahl zum 44. Studierendenparlament der RFWU Bonn — 20. Januar 2022",
+    titleEN: "Election of the 44th Student Parliament of the University of Bonn — 20th January 2022",
+    outerPadding: 5,
+    itemHeight: 6.5,
+    columnPadding: 3,
+    listRowPadding: 8,
+    columns: 5,
+    dashedLineWidth: 2,
+    circleRadius: 2,
+    circleWidth: 0.25,
+    numberSize: 8,
+    nameSize: 7,
+    subjectSize: 6,
+}
+
 class GlobalConfig {
+    options: Options
     pageSize: [number, number]
     outerPadding: number
     headerHeight: number
@@ -17,20 +52,27 @@ class GlobalConfig {
     boldFont: PDFFont
     dottedLineWidth: number
     dashedLineWidth: number
+    azb: boolean
 
-    constructor(regularFont: PDFFont, italicFont: PDFFont, boldFont: PDFFont) {
+    constructor(regularFont: PDFFont, italicFont: PDFFont, boldFont: PDFFont, options: Options, azb: boolean) {
+        this.options = options
         this.pageSize = PageSizes.A3
-        this.outerPadding = mm(5)
+        this.outerPadding = mm(options.outerPadding)
         this.headerHeight = mm(18)
-        this.itemHeight = mm(6.5)
-        this.columnPadding = mm(3)
-        this.listRowPadding = mm(8)
-        this.columns = 5
+        this.itemHeight = mm(options.itemHeight)
+        this.columnPadding = mm(options.columnPadding)
+        this.listRowPadding = mm(options.listRowPadding)
+        this.columns = options.columns
         this.regularFont = regularFont
         this.italicFont = italicFont
         this.boldFont = boldFont
         this.dottedLineWidth = 0.25
-        this.dashedLineWidth = mm(2)
+        this.dashedLineWidth = mm(options.dashedLineWidth)
+        this.azb = azb;
+        if(this.azb){
+            this.headerHeight = mm(60);
+            this.dashedLineWidth = 1;
+        }
     }
 
     get listSpaceHeight() {
@@ -63,18 +105,21 @@ class ItemConfig {
         this.globalConfig = globalConfig
         this.height = globalConfig.itemHeight
         this.width = (globalConfig.pageSize[0] - (2 * this.globalConfig.outerPadding) - ((this.globalConfig.columns - 1) * this.globalConfig.columnPadding)) / this.globalConfig.columns
-        this.circleRadius = mm(2)
-        this.circleWidth = mm(0.25)
+        this.circleRadius = mm(globalConfig.options.circleRadius)
+        this.circleWidth = mm(globalConfig.options.circleWidth)
         this.circleSpaceWidth = this.circleRadius * 2 + mm(0.25)
         this.numberSpaceWidth = mm(4)
-        this.numberSize = 8
+        this.numberSize = globalConfig.options.numberSize
         this.numberFont = globalConfig.regularFont
-        this.nameSize = 7
+        this.nameSize = globalConfig.options.nameSize
         this.nameY = 3.5 / 6.5 * this.height
         this.nameFont = globalConfig.regularFont
-        this.subjectSize = 6
+        this.subjectSize = globalConfig.options.subjectSize
         this.subjectY = 1 / 6.5 * this.height
         this.subjectFont = globalConfig.italicFont
+        if(globalConfig.azb){
+            this.circleSpaceWidth = mm(15);
+        }
     }
 }
 
@@ -132,7 +177,10 @@ class List {
     }
 
     getHeight(c: GlobalConfig) {
-        const rowsPerColumn = this.getRowsPerColumn(c)
+        let rowsPerColumn = this.getRowsPerColumn(c);
+        if (c.azb && (((this.people.length + 1) % c.columns) == 0)) {
+            rowsPerColumn++;
+        }
         return c.itemHeight * rowsPerColumn
     }
 }
@@ -163,13 +211,24 @@ const drawPerson = (page: PDFPage, person: Person, x: number, y: number, c: Item
             opacity: 0.5,
         })
     }
-    page.drawCircle({
-        x: start_x + c.circleRadius,
-        y: y + (c.height / 2),
-        size: c.circleRadius,
-        borderColor: cmyk(0, 0, 0, 1),
-        borderWidth: c.circleWidth,
-    })
+    if(c.globalConfig.azb){
+        page.drawRectangle({
+            x: start_x,
+            y: y,
+            width: c.circleSpaceWidth,
+            height: c.height,
+            borderColor: cmyk(0, 0, 0, 1),
+                           borderWidth: 1,
+        });
+    } else {
+        page.drawCircle({
+            x: start_x + c.circleRadius,
+            y: y + (c.height / 2),
+            size: c.circleRadius,
+            borderColor: cmyk(0, 0, 0, 1),
+            borderWidth: c.circleWidth,
+        })
+    }
     start_x = x + c.circleSpaceWidth
     const referenceHeight = c.numberFont.heightAtSize(c.numberSize, {descender: false})
     if (debug) {
@@ -271,14 +330,39 @@ const drawListField = (page: PDFPage, list: List, x: number, y: number, c: ItemC
             opacity: 0.5,
         })
     }
-    page.drawCircle({
-        x: start_x + c.circleRadius,
-        y: y + (c.height / 2),
-        size: c.circleRadius,
-        borderColor: cmyk(0, 0, 0, 1),
-        borderWidth: c.circleWidth,
-    })
-    start_x = x + c.circleSpaceWidth + c.numberSpaceWidth
+    if(c.globalConfig.azb){
+        page.drawRectangle({
+            x: start_x,
+            y: y,
+            width: c.circleSpaceWidth,
+            height: c.height,
+            borderColor: cmyk(0, 0, 0, 1),
+                           borderWidth: 1,
+        });
+        start_x = x + c.circleSpaceWidth;
+        const referenceHeight = c.numberFont.heightAtSize(c.numberSize, { descender: false });
+        if (debug) {
+            page.drawRectangle({
+                x: start_x,
+                y: y,
+                width: c.numberSpaceWidth,
+                height: c.height,
+                color: cmyk(0, 0, 0.6, 0),
+                               opacity: 0.5,
+            });
+        }
+        drawCentredText(page, 'L', start_x, y + (c.height - referenceHeight) / 2, c.numberSpaceWidth, c.numberSize, c.numberFont, debug);
+        start_x += c.numberSpaceWidth;
+    } else {
+        page.drawCircle({
+            x: start_x + c.circleRadius,
+            y: y + (c.height / 2),
+            size: c.circleRadius,
+            borderColor: cmyk(0, 0, 0, 1),
+            borderWidth: c.circleWidth,
+        })
+        start_x = x + c.circleSpaceWidth + c.numberSpaceWidth
+    }
     if (debug) {
         page.drawRectangle({
             x: start_x,
@@ -378,6 +462,20 @@ const drawList = (page: PDFPage, list: List, y: number, c: GlobalConfig, debug: 
         drawPerson(page, person, x, pos_y, itemConfig, row == 0, debug)
         index++;
     }
+    if(c.azb){
+        let column = Math.floor(index / rowsPerColumn);
+        let row = index % rowsPerColumn;
+        if (column > (c.columns - 1)) {
+            column = c.columns - 1;
+            row = rowsPerColumn;
+        }
+        const itemConfig = new ItemConfig(c);
+        itemConfig.nameFont = c.boldFont;
+        const x = c.outerPadding + column * itemConfig.width + column * c.columnPadding;
+        const pos_y = y - row * c.itemHeight;
+        const person = new Person('G', 'Gesamtstimmen', list.listname.join(' '));
+        drawPerson(page, person, x, pos_y, itemConfig, row == 0, debug);
+    }
 }
 
 
@@ -387,9 +485,13 @@ const drawLists = (page: PDFPage, data: Data, c: GlobalConfig, debug: boolean = 
     current_y -= (0.5 * c.listRowPadding + c.itemHeight)
     for (let list of data.lists) {
         const listtodraw = List.fromJson(list);
-        const rowsPerColumn = list.getRowsPerColumn(c)
         drawList(page, listtodraw, current_y, c, debug)
-        current_y = current_y - rowsPerColumn * c.itemHeight - c.listRowPadding
+        if(c.azb){
+            current_y = current_y - list.getHeight(c) - c.listRowPadding;
+        } else {
+            const rowsPerColumn = list.getRowsPerColumn(c)
+            current_y = current_y - rowsPerColumn * c.itemHeight - c.listRowPadding
+        }
         const line_y = current_y + c.itemHeight + 0.5 * c.listRowPadding
         drawDashedLine(page, line_y, c)
     }
@@ -423,6 +525,109 @@ function drawX(page: PDFPage, start_x: number, start_y: number, c: GlobalConfig)
         lineCap: 1,
     })
 }
+
+const drawAltHeader = (page, c, debug = true) => {
+    const { width, height } = page.getSize();
+    let x, y, w;
+    x = c.outerPadding;
+    y = height - c.outerPadding - mm(33);
+    w = mm(55);
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(33),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+    drawCentredText(page, 'Urne Nr.', x, y + mm(1), w, 8, c.regularFont, debug);
+    x += w + c.columnPadding;
+    w = mm(112);
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(33),
+                       borderColor: cmyk(0, 0, 0, .5),
+                       borderWidth: 2,
+    });
+    drawCentredText(page, 'Kommentare + anders interpretierte Stimmzettel', x, y + mm(1), w, 8, c.regularFont, debug);
+    x = c.outerPadding;
+    y -= mm(18);
+    w = mm(35);
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+    drawCentredText(page, 'Nr. auf Laufzettel', x, y + mm(1), w, 8, c.regularFont, debug);
+    x += w + c.columnPadding;
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+                       borderColor: cmyk(0, 0, 0, .5),
+                       borderWidth: 2,
+    });
+    drawCentredText(page, 'Team', x, y + mm(1), w, 8, c.regularFont, debug);
+    x += w + c.columnPadding;
+    w = mm(94);
+    page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: mm(15),
+                       borderColor: cmyk(0, 0, 0, .5),
+                       borderWidth: 2,
+    });
+    drawCentredText(page, 'Unterschrift Tischleitung', x, y + mm(1), w, 8, c.regularFont, debug);
+    x += w + c.columnPadding;
+    w = mm(55);
+    drawCentredText(page, 'Gültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug);
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+    y += mm(13);
+    drawCentredText(page, 'Unültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug);
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+    y += mm(13);
+    drawCentredText(page, 'Stimmen Gesamt', x, y + mm(3), w, 20, c.boldFont, debug);
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+    y += mm(13);
+    drawCentredText(page, 'Vorab ungültig, weil', x, y + mm(6), w, 8, c.regularFont, debug);
+    drawCentredText(page, 'Briefwahlvorgaben nicht eingehalten', x, y + mm(3), w, 8, c.regularFont, debug);
+    page.drawRectangle({
+        x: x + w,
+        y: y,
+        width: w,
+        height: mm(10),
+                       borderColor: cmyk(0, 0, 0, 1),
+                       borderWidth: 2,
+    });
+};
 
 const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     const {width, height} = page.getSize()
@@ -494,11 +699,11 @@ const drawHeader = (page: PDFPage, c: GlobalConfig, debug: boolean = true) => {
     start_x = width / 2
     sectionWidth = width / 2 - c.outerPadding
     start_y = height - c.outerPadding - mm(4)
-    drawCentredText(page, "SP-Stimmzettel / SP Ballot", start_x, start_y, sectionWidth, 12, c.boldFont, debug)
+    drawCentredText(page, c.options.topTitle, start_x, start_y, sectionWidth, 12, c.boldFont, debug)
     start_y -= mm(5)
-    drawCentredText(page, "Wahl zum 44. Studierendenparlament der RFWU Bonn — 20. Januar 2022", start_x, start_y, sectionWidth, 12, c.regularFont, debug)
+    drawCentredText(page, c.options.title, start_x, start_y, sectionWidth, 12, c.regularFont, debug)
     start_y -= mm(4)
-    drawCentredText(page, "Election of the 44th Student Parliament of the University of Bonn — 20th January 2022\n", start_x, start_y, sectionWidth, 10, c.italicFont, debug)
+    drawCentredText(page, c.options.titleEN, start_x, start_y, sectionWidth, 10, c.italicFont, debug)
 }
 
 interface TextCfg {
@@ -521,7 +726,7 @@ const drawTexts = (page: PDFPage, texts: TextCfg[], size: number, x: number, y: 
     }
 }
 
-const main = async (inputfile: string, outputfile: string, debug: boolean) => {
+const main = async (inputfile: string, outputfile: string, debug: boolean, azb: boolean) => {
     const pdfDoc = await PDFDocument.create()
     pdfDoc.registerFontkit(fontkit)
     const italicttf = fs.readFileSync('fonts/RobotoCondensed-Italic.ttf')
@@ -530,7 +735,7 @@ const main = async (inputfile: string, outputfile: string, debug: boolean) => {
     const italicFont = await pdfDoc.embedFont(italicttf)
     const regularFont = await pdfDoc.embedFont(regularttf)
     const boldFont = await pdfDoc.embedFont(boldttf)
-    const globalConfig = new GlobalConfig(regularFont, italicFont, boldFont)
+    const globalConfig = new GlobalConfig(regularFont, italicFont, boldFont, defaultOptions, azb)
     const page = pdfDoc.addPage(globalConfig.pageSize)
     const rawData = JSON.parse(fs.readFileSync(inputfile).toString())
     const data = Data.fromJson(rawData)
@@ -554,5 +759,8 @@ const main = async (inputfile: string, outputfile: string, debug: boolean) => {
     fs.writeFileSync(outputfile, pdfBytes)
 }
 
-await main('2022.json', 'out.pdf', false)
-await main('2022.json', 'out-debug.pdf', true)
+await main('2022.json', 'stimmzettel.pdf', false, false)
+await main('2022.json', 'stimmzettel-debug.pdf', true, false)
+
+await main('2022.json', 'auszaehlbogen.pdf', false, true)
+await main('2022.json', 'auszaehlbogen-debug.pdf', true, true)

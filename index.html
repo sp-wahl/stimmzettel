@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stimmzettelgenerator</title>
+    <link rel="stylesheet" href="web/bulma.min.css">
+    <link rel="stylesheet" href="web/main.css">
+</head>
+<body>
+<div class="columns" style="height: 100%;">
+    <div class="column">
+        <section class="section">
+            <div class="container">
+                <h1 class="title">
+                    Stimmzettelgenerator
+                </h1>
+                <p class="subtitle">
+                    Ach, hätt's das früher schon gegeben!
+                </p>
+
+                <div class="field">
+                    <label class="label">Konfiguration</label>
+                    <div class="control">
+                        <textarea class="textarea" rows="15" id="config-input" placeholder="config json"></textarea>
+                    </div>
+                    <p class="help">Schriftgrößen (…Size) in pt, Spalten (columns) ohne Einheit, alle sonstigen Zahlen
+                        als mm</p>
+                </div>
+
+                <div class="field">
+                    <label class="label">Daten (Listen und Kandidierende)</label>
+                    <div class="control">
+                        <textarea class="textarea" id="data-input" placeholder="data json"></textarea>
+                    </div>
+                </div>
+
+                <h45 class="title is-5">Dokument generieren und rechts anzeigen</h5>
+                    <div class="field is-grouped">
+                        <div class="control">
+                            <button class="button is-primary" onclick="generateStimmzettel()">Stimmzettel</button>
+                        </div>
+                        <div class="control">
+                            <button class="button" onclick="generateStimmzettelDebug()">Stimmzettel (debug)</button>
+                        </div>
+                        <div class="field is-grouped">
+                            <div class="control">
+                                <button class="button" onclick="generateAuszaehlbogen()">Auszählbogen</button>
+                            </div>
+                            <div class="control">
+                                <button class="button" onclick="generateAuszaehlbogenDebug()">Auszählbogen(debug)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+        </section>
+    </div>
+    <div class="column" style="height: 100%;">
+        <section class="section" style="height: 100%;">
+            <div class="container">
+            </div>
+            <iframe id="preview" style="width: 100%; height: 100%;"></iframe>
+        </section>
+    </div>
+</div>
+
+</body>
+<script src="web/fontkit.umd.min.js"></script>
+<script src="web/pdf-lib.min.js"></script>
+<script src="web/main.js"></script>
+</html>
