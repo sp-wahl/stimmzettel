@@ -753,7 +753,12 @@ const main = async (inputfile: string, outputfile: string, debug: boolean, azb: 
             opacity: 0.1,
         })
     }
+    if (azb){
+        drawAltHeader(page, globalConfig, debug)
+    }
+    else {
     drawHeader(page, globalConfig, debug)
+    }
     drawLists(page, data, globalConfig, debug)
     const pdfBytes = await pdfDoc.save()
     fs.writeFileSync(outputfile, pdfBytes)
