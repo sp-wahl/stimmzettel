@@ -519,7 +519,7 @@ const drawAltHeader = (page, c, debug = true) => {
         borderWidth: 2,
     });
     y += mm(13);
-    drawCentredText(page, 'Unültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug);
+    drawCentredText(page, 'Ungültige Stimmen', x, y + mm(3), w, 20, c.regularFont, debug);
     page.drawRectangle({
         x: x + w,
         y: y,
